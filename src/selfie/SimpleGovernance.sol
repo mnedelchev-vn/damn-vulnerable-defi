@@ -2,6 +2,7 @@
 // Damn Vulnerable DeFi v4 (https://damnvulnerabledefi.xyz)
 pragma solidity =0.8.25;
 
+import {Test, console} from "forge-std/Test.sol";
 import {DamnValuableVotes} from "../DamnValuableVotes.sol";
 import {ISimpleGovernance} from "./ISimpleGovernance.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
@@ -98,8 +99,12 @@ contract SimpleGovernance is ISimpleGovernance {
     }
 
     function _hasEnoughVotes(address who) private view returns (bool) {
+        console.log(address(_votingToken), '_votingToken');
+        console.log(who, 'who');
         uint256 balance = _votingToken.getVotes(who);
+        console.log(balance, 'balance');
         uint256 halfTotalSupply = _votingToken.totalSupply() / 2;
+        console.log(halfTotalSupply, 'halfTotalSupply');
         return balance > halfTotalSupply;
     }
 }

